@@ -1,0 +1,13 @@
+<h2>Rooms</h2>
+<div class="room-list">
+  <div
+    *ngFor="let room of rooms$ | async"
+    class="room-item"
+    (click)="onSelectRoom(room)"
+  >
+    <h3>{{ room.name | slice : 0 : 20 }}</h3>
+    <button (click)="onJoinRoom(room.roomId); $event.stopPropagation()">
+      Join Room
+    </button>
+  </div>
+</div>

@@ -1,0 +1,20 @@
+<div *ngIf="selectedRoom$ | async as selectedRoom; else noRoomSelected">
+  <h2>{{ selectedRoom.name | slice : 0 : 20 }}</h2>
+
+  <div class="messages">
+    <app-message
+      *ngFor="let message of messages$ | async; trackBy: trackByMessageId"
+      [message]="message"
+    ></app-message>
+  </div>
+
+  <div class="message-input">
+    <input type="text" [(ngModel)]="newMessage" placeholder="Enter message" />
+    <button (click)="onSendMessage()">Send</button>
+    <button (click)="onLeaveRoom()">Leave Room</button>
+  </div>
+</div>
+
+<ng-template #noRoomSelected>
+  <p>No room selected.</p>
+</ng-template>

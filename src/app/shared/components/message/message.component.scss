@@ -1,0 +1,49 @@
+.message {
+  max-width: 70%;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  background: #f5f5f5;
+  margin: 0.5rem 0;
+
+  &.outgoing {
+    margin-left: auto;
+    background: #e3f2fd;
+  }
+}
+
+.message-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+  font-size: 0.8rem;
+
+  .sender {
+    font-weight: 500;
+  }
+
+  .timestamp {
+    color: #666;
+  }
+}
+
+.message-content {
+  word-break: break-word;
+}
+
+.message-status {
+  font-size: 0.8rem;
+  text-align: right;
+  margin-top: 0.25rem;
+
+  .sending {
+    color: #666;
+  }
+
+  .sent {
+    color: #4caf50;
+  }
+
+  .error {
+    color: #f44336;
+  }
+}
