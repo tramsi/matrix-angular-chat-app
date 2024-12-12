@@ -20,6 +20,7 @@ export class ChatComponent implements OnInit, OnDestroy {
   newMessage: string = '';
   private sendMessageSub: Subscription | null = null;
   private leaveRoomSub: Subscription | null = null;
+  imagePreview: string = '';
 
   constructor(private matrixService: MatrixService) {
     this.selectedRoom$ = this.matrixService.selectedRoom$;
@@ -37,12 +38,13 @@ export class ChatComponent implements OnInit, OnDestroy {
   }
 
   onSendMessage(): void {
-    if (this.newMessage.trim() === '') return;
+    if (this.newMessage.trim() === '' && !this.imagePreview) return;
 
     this.sendMessageSub = this.matrixService
-      .sendMessage(this.newMessage)
+      .sendMessage(this.newMessage, this.imagePreview)
       .subscribe(() => {
         this.newMessage = ''; // Clear the input field after sending
+        this.imagePreview = ''; // Clear the image preview
       });
   }
 
@@ -52,6 +54,22 @@ export class ChatComponent implements OnInit, OnDestroy {
 
   trackByMessageId(index: number, message: Message): number {
     return message.timestamp; // Use timestamp as a unique identifier
+  }
+
+  onFileSelected(event: Event): void {
+    const fileInput = event.target as HTMLInputElement;
+    if (fileInput.files && fileInput.files[0]) {
+      const file = fileInput.files[0];
+      this.matrixService.uploadImage(file).subscribe({
+        next: (imageUrl) => {
+          console.log('Image URL:', imageUrl);
+          this.imagePreview = imageUrl;
+        },
+        error: (error) => {
+          console.error('Error uploading image:', error);
+        },
+      });
+    }
   }
 
   ngOnDestroy(): void {

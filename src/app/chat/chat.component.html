@@ -10,6 +10,10 @@
 
   <div class="message-input">
     <input type="text" [(ngModel)]="newMessage" placeholder="Enter message" />
+    <div class="image-upload">
+      <input type="file" accept="image/*" (change)="onFileSelected($event)" />
+      <img *ngIf="imagePreview" [src]="imagePreview" alt="Image Preview" class="image-preview" />
+    </div>
     <button (click)="onSendMessage()">Send</button>
     <button (click)="onLeaveRoom()">Leave Room</button>
   </div>
