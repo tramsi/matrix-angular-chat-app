@@ -1,7 +1,14 @@
 <div *ngIf="selectedRoom$ | async as selectedRoom; else noRoomSelected">
   <h2>{{ selectedRoom.name | slice : 0 : 20 }}</h2>
 
-  <div class="messages">
+  <div
+    class="messages"
+    infiniteScroll
+    [infiniteScrollDistance]="0.1"
+    [infiniteScrollThrottle]="50"
+    (scrolledUp)="onScroll()"
+    [scrollWindow]="false"
+  >
     <app-message
       *ngFor="let message of messages$ | async; trackBy: trackByMessageId"
       [message]="message"

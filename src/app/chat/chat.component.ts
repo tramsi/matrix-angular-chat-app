@@ -4,7 +4,7 @@ import {
   OnDestroy,
   OnInit,
 } from '@angular/core';
-import { Observable, Subscription, filter } from 'rxjs';
+import { Observable, Subscription } from 'rxjs';
 import { MatrixService } from '../core/matrix.service';
 import { Message, Room } from '../core/models';
 
@@ -12,7 +12,7 @@ import { Message, Room } from '../core/models';
   selector: 'app-chat',
   templateUrl: './chat.component.html',
   styleUrls: ['./chat.component.scss'],
-  // changeDetection: ChangeDetectionStrategy.OnPush,
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ChatComponent implements OnInit, OnDestroy {
   selectedRoom$: Observable<Room | null>;
@@ -34,6 +34,13 @@ export class ChatComponent implements OnInit, OnDestroy {
         console.error('Error initializing Matrix client:', error);
       },
     });
+  }
+
+  onScroll(): void {
+    const selectedRoom = this.matrixService.getSelectedRoom();
+    if (selectedRoom) {
+      this.matrixService.loadMoreMessages(selectedRoom.roomId).subscribe();
+    }
   }
 
   onSendMessage(): void {

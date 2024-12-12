@@ -22,6 +22,7 @@ import {
   EventType,
   MsgType,
   ClientEvent,
+  EventTimeline,
 } from 'matrix-js-sdk';
 import { Room, Message } from './models';
 import { MATRIX_CONFIG } from './matrix.config';
@@ -38,6 +39,10 @@ export class MatrixService {
 
   private selectedRoomSubject = new BehaviorSubject<Room | null>(null);
   public selectedRoom$ = this.selectedRoomSubject.asObservable();
+
+  getSelectedRoom(): Room | null {
+    return this.selectedRoomSubject.value;
+  }
 
   private messagesSubject = new BehaviorSubject<Message[]>([]);
   public messages$ = this.messagesSubject.asObservable();
@@ -67,16 +72,22 @@ export class MatrixService {
       });
 
     // Listen for incoming room timelines
-    this.client.on(RoomEvent.Timeline, (event: MatrixEvent) => {
-      if (event.getType() === 'm.room.message') {
-        const message: Message = {
-          sender: event.getSender() || '',
-          content: event.getContent()['body'] || '',
-          timestamp: event.getTs(),
-        };
-        this.messagesSubject.next([...this.messagesSubject.value, message]);
+    this.client.on(
+      RoomEvent.Timeline,
+      (event: MatrixEvent, room: MatrixRoom | undefined) => {
+        if (
+          event.getType() === 'm.room.message' &&
+          room?.roomId === this.selectedRoomSubject.value?.roomId
+        ) {
+          const message: Message = {
+            sender: event.getSender() || '',
+            content: event.getContent()['body'] || '',
+            timestamp: event.getTs(),
+          };
+          this.messagesSubject.next([...this.messagesSubject.value, message]);
+        }
       }
-    });
+    );
 
     // Start the client
     return from(this.client.startClient({ initialSyncLimit: 20 })).pipe(
@@ -150,6 +161,50 @@ export class MatrixService {
       }));
 
     this.messagesSubject.next(initialMessages);
+  }
+
+  public loadMoreMessages(
+    roomId: string,
+    limit: number = 30
+  ): Observable<void> {
+    if (!this.client) return throwError(() => 'Matrix client not initialized');
+
+    const room = this.client.getRoom(roomId);
+    if (!room) return throwError(() => `Room ${roomId} not found`);
+
+    const liveTimeline = room.getLiveTimeline();
+
+    return from(
+      this.client.paginateEventTimeline(liveTimeline, {
+        backwards: true,
+        limit: limit,
+      })
+    ).pipe(
+      tap(() => {
+        // Get the events from the timeline after pagination
+        const events = liveTimeline.getEvents();
+
+        // Map MatrixEvents to your Message model
+        const newMessages = events
+          .filter((event) => event.getType() === 'm.room.message')
+          .map((event) => ({
+            sender: event.getSender() || '',
+            content: event.getContent()['body'] || '',
+            timestamp: event.getTs(),
+          }));
+
+        // Update the messages subject with the new messages prepended to the existing ones
+        this.messagesSubject.next([
+          ...newMessages,
+          ...this.messagesSubject.value,
+        ]);
+      }),
+      map(() => void 0), // Convert to void Observable
+      catchError((error) => {
+        console.error('Error loading more messages:', error);
+        return throwError(() => 'Failed to load more messages');
+      })
+    );
   }
 
   // Send a message to the currently selected room

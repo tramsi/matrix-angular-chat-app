@@ -5,7 +5,7 @@ import { Message } from '../../../core/models';
   selector: 'app-message',
   templateUrl: './message.component.html',
   styleUrls: ['./message.component.scss'],
-  // changeDetection: ChangeDetectionStrategy.OnPush,
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MessageComponent {
   @Input() message!: Message;

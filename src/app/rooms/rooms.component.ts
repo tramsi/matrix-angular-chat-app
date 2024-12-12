@@ -12,7 +12,7 @@ import { Room } from '../core/models';
   selector: 'app-rooms',
   templateUrl: './rooms.component.html',
   styleUrls: ['./rooms.component.scss'],
-  // changeDetection: ChangeDetectionStrategy.OnPush,
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RoomsComponent implements OnInit, OnDestroy {
   rooms$: Observable<Room[]>;
