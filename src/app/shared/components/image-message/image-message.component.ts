@@ -1,37 +1,42 @@
-import { Component, Input, OnInit } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  Input,
+  OnInit,
+} from '@angular/core';
 import { MatrixService } from '../../../core/matrix.service';
 import { CommonModule } from '@angular/common';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
 @Component({
   selector: 'app-image-message',
   template: ` <img *ngIf="imageUrl" [src]="imageUrl" alt="Image" /> `,
   styleUrls: ['./image-message.component.scss'],
   standalone: true,
-  imports: [CommonModule]
+  imports: [CommonModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ImageMessageComponent implements OnInit {
   @Input() mxcUrl!: string;
-  imageUrl: string | null = null;
+  imageUrl: SafeResourceUrl | null = null;
 
-  constructor(private matrixService: MatrixService) {}
+  constructor(
+    private matrixService: MatrixService,
+    private cdr: ChangeDetectorRef
+  ) {}
 
   ngOnInit() {
     if (this.mxcUrl) {
       this.matrixService.getMediaContent(this.mxcUrl).subscribe({
-        next: (blob) => {
-          this.imageUrl = URL.createObjectURL(blob);
+        next: (url) => {
+          this.imageUrl = url;
+          this.cdr.markForCheck();
         },
         error: (error) => {
-          console.error('Error loading image:', error);
-        }
+          console.log(error);
+        },
       });
-    }
-  }
-
-  ngOnDestroy() {
-    // Clean up the object URL to prevent memory leaks
-    if (this.imageUrl) {
-      URL.revokeObjectURL(this.imageUrl);
     }
   }
 }

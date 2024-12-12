@@ -10,6 +10,10 @@ import {
   throwError,
   catchError,
   take,
+  of,
+  merge,
+  mergeMap,
+  switchMap,
 } from 'rxjs';
 import {
   MatrixClient,
@@ -27,6 +31,7 @@ import { Room, Message } from './models';
 import { MATRIX_CONFIG } from './matrix.config';
 import { RoomMessageEventContent } from 'matrix-js-sdk/lib/types';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
 @Injectable({
   providedIn: 'root',
@@ -43,7 +48,7 @@ export class MatrixService {
   private messagesSubject = new BehaviorSubject<Message[]>([]);
   public messages$ = this.messagesSubject.asObservable();
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private sanitizer: DomSanitizer) {}
 
   // Initialize the Matrix client
   public initClient(): Observable<void> {
@@ -299,16 +304,14 @@ export class MatrixService {
     }
   }
 
-  getMediaContent(mxcUrl: string): Observable<unknown> {
+  getMediaContent(mxcUrl: string): Observable<SafeResourceUrl> {
     if (!this.client) {
       console.error('Matrix client is not initialized.');
       return throwError(() => new Error('Matrix client not initialized'));
     }
 
-    // Use thumbnail parameters for better performance
     const thumbnailUrl = this.mxcToHttp(mxcUrl);
 
-    // Make an HTTP GET request with the authentication header
     const headers = new HttpHeaders({
       Authorization: `Bearer ${this.client.getAccessToken()}`,
     });
@@ -316,14 +319,24 @@ export class MatrixService {
     return this.http
       .get(thumbnailUrl as string, {
         headers,
+        responseType: 'blob', // Directly get the response as a blob
       })
       .pipe(
-        tap((response) => {
-          console.log('Image loaded:', response);
+        switchMap((blob) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(blob); // convert blob to base64
+
+          // Return an observable that emits the result when the FileReader has finished
+          return fromEvent(reader, 'loadend').pipe(
+            map(() => {
+              const base64Data = reader.result as string;
+              return this.sanitizer.bypassSecurityTrustResourceUrl(base64Data);
+            })
+          );
         }),
         catchError((error) => {
-          console.error('Error loading image:', error);
-          return throwError(() => 'Failed to load image');
+          console.error('Error fetching media content:', error);
+          return throwError(() => error); // Re-throw the error after logging
         })
       );
   }

@@ -1,5 +1,6 @@
 import {
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   Component,
   OnDestroy,
   OnInit,
@@ -12,7 +13,7 @@ import { Message, Room } from '../core/models';
   selector: 'app-chat',
   templateUrl: './chat.component.html',
   styleUrls: ['./chat.component.scss'],
-  // changeDetection: ChangeDetectionStrategy.OnPush,
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ChatComponent implements OnInit, OnDestroy {
   selectedRoom$: Observable<Room | null>;
@@ -22,7 +23,10 @@ export class ChatComponent implements OnInit, OnDestroy {
   private leaveRoomSub: Subscription | null = null;
   imagePreview: string = '';
 
-  constructor(private matrixService: MatrixService) {
+  constructor(
+    private matrixService: MatrixService,
+    private cdr: ChangeDetectorRef
+  ) {
     this.selectedRoom$ = this.matrixService.selectedRoom$;
     this.messages$ = this.matrixService.messages$;
   }
@@ -45,6 +49,7 @@ export class ChatComponent implements OnInit, OnDestroy {
       .subscribe(() => {
         this.newMessage = ''; // Clear the input field after sending
         this.imagePreview = ''; // Clear the image preview
+        this.cdr.markForCheck();
       });
   }
 
@@ -62,8 +67,8 @@ export class ChatComponent implements OnInit, OnDestroy {
       const file = fileInput.files[0];
       this.matrixService.uploadImage(file).subscribe({
         next: (imageUrl) => {
-          console.log('Image URL:', imageUrl);
           this.imagePreview = imageUrl;
+          this.cdr.markForCheck();
         },
         error: (error) => {
           console.error('Error uploading image:', error);
