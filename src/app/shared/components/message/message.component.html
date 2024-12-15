@@ -1,4 +1,11 @@
 <div class="message">
   <span class="sender">{{ message.sender }}:</span>
   <span class="content">{{ message.content }}</span>
+  <div class="media" *ngFor="let item of message.media">
+    <app-image-message
+      *ngIf="item.type === 'image' && item.url"
+      [mxcUrl]="item.url"
+    ></app-image-message>
+    <!-- Add more media types handling as needed -->
+  </div>
 </div>

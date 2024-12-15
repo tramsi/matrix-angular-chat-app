@@ -10,6 +10,10 @@ import {
   throwError,
   catchError,
   take,
+  of,
+  merge,
+  mergeMap,
+  switchMap,
 } from 'rxjs';
 import {
   MatrixClient,
@@ -26,6 +30,8 @@ import {
 import { Room, Message } from './models';
 import { MATRIX_CONFIG } from './matrix.config';
 import { RoomMessageEventContent } from 'matrix-js-sdk/lib/types';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
 @Injectable({
   providedIn: 'root',
@@ -42,7 +48,7 @@ export class MatrixService {
   private messagesSubject = new BehaviorSubject<Message[]>([]);
   public messages$ = this.messagesSubject.asObservable();
 
-  constructor() {}
+  constructor(private http: HttpClient, private sanitizer: DomSanitizer) {}
 
   // Initialize the Matrix client
   public initClient(): Observable<void> {
@@ -73,6 +79,15 @@ export class MatrixService {
           sender: event.getSender() || '',
           content: event.getContent()['body'] || '',
           timestamp: event.getTs(),
+          type: event.getContent()['msgtype'],
+          media: event.getContent()['url']
+            ? [
+                {
+                  url: event.getContent()['url'],
+                  type: 'image',
+                },
+              ]
+            : [],
         };
         this.messagesSubject.next([...this.messagesSubject.value, message]);
       }
@@ -141,39 +156,56 @@ export class MatrixService {
     // Fetch initial messages
     const timeline = room.getLiveTimeline();
     const events = timeline.getEvents();
-    const initialMessages = events
+    const initialMessages: Message[] = events
       .filter((event) => event.getType() === 'm.room.message')
       .map((event) => ({
         sender: event.getSender() || '',
         content: event.getContent()['body'] || '',
         timestamp: event.getTs(),
+        type: event.getContent()['msgtype'],
+        media: event.getContent()['url']
+          ? [
+              {
+                url: event.getContent()['url'],
+                type: 'image',
+              },
+            ]
+          : [],
       }));
 
     this.messagesSubject.next(initialMessages);
   }
 
   // Send a message to the currently selected room
-  public sendMessage(message: string): Observable<void> {
+  public sendMessage(content: string, imageUrl?: string): Observable<void> {
     const selectedRoom = this.selectedRoomSubject.value;
     if (!this.client || !selectedRoom) {
       return throwError(() => 'No selected room or client not initialized');
     }
 
-    const content: RoomMessageEventContent = {
-      body: message,
-      msgtype: MsgType.Text,
-    };
+    const eventContent: RoomMessageEventContent = imageUrl
+      ? {
+          msgtype: MsgType.Image,
+          body: content || 'Image',
+          url: imageUrl,
+          info: {
+            mimetype: 'image/jpeg',
+          },
+        }
+      : {
+          msgtype: MsgType.Text,
+          body: content,
+        };
 
     return from(
       this.client.sendEvent(
         selectedRoom.roomId,
         EventType.RoomMessage,
-        content,
+        eventContent,
         ''
       )
     ).pipe(
       map(() => {
-        // Map to void since we don't need the ISendEventResponse
         return;
       }),
       catchError((error) => {
@@ -203,6 +235,29 @@ export class MatrixService {
     );
   }
 
+  // Upload an image
+  public uploadImage(file: File): Observable<string> {
+    if (!this.client) {
+      return throwError(() => new Error('Matrix client not initialized'));
+    }
+
+    return new Observable<string>((observer) => {
+      this.client
+        ?.uploadContent(file, {
+          type: file.type,
+        })
+        .then((response) => {
+          console.log('Image uploaded:', response);
+          const imageUrl = response.content_uri;
+          observer.next(imageUrl || '');
+          observer.complete();
+        })
+        .catch((error) => {
+          observer.error(error);
+        });
+    });
+  }
+
   // Clean up resources
   public disconnect(): void {
     if (this.client) {
@@ -212,5 +267,77 @@ export class MatrixService {
     this.roomsSubject.complete();
     this.selectedRoomSubject.complete();
     this.messagesSubject.complete();
+  }
+
+  mxcToHttp(
+    mxcUrl: string,
+    width?: number,
+    height?: number,
+    resizeMethod?: string
+  ): string | null {
+    if (!this.client) {
+      console.error('Matrix client is not initialized.');
+      return '';
+    }
+
+    // Check if width, height, and resizeMethod are provided
+    if (width && height && resizeMethod) {
+      return this.client.mxcUrlToHttp(
+        mxcUrl,
+        width,
+        height,
+        resizeMethod,
+        false,
+        true,
+        true
+      );
+    } else {
+      return this.client.mxcUrlToHttp(
+        mxcUrl,
+        undefined,
+        undefined,
+        undefined,
+        false,
+        true,
+        true
+      );
+    }
+  }
+
+  getMediaContent(mxcUrl: string): Observable<SafeResourceUrl> {
+    if (!this.client) {
+      console.error('Matrix client is not initialized.');
+      return throwError(() => new Error('Matrix client not initialized'));
+    }
+
+    const thumbnailUrl = this.mxcToHttp(mxcUrl);
+
+    const headers = new HttpHeaders({
+      Authorization: `Bearer ${this.client.getAccessToken()}`,
+    });
+
+    return this.http
+      .get(thumbnailUrl as string, {
+        headers,
+        responseType: 'blob', // Directly get the response as a blob
+      })
+      .pipe(
+        switchMap((blob) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(blob); // convert blob to base64
+
+          // Return an observable that emits the result when the FileReader has finished
+          return fromEvent(reader, 'loadend').pipe(
+            map(() => {
+              const base64Data = reader.result as string;
+              return this.sanitizer.bypassSecurityTrustResourceUrl(base64Data);
+            })
+          );
+        }),
+        catchError((error) => {
+          console.error('Error fetching media content:', error);
+          return throwError(() => error); // Re-throw the error after logging
+        })
+      );
   }
 }

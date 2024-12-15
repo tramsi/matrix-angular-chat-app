@@ -1,3 +1,5 @@
+import { MsgType } from 'matrix-js-sdk/lib/types';
+
 export interface Room {
   roomId: string;
   name: string;
@@ -11,8 +13,9 @@ export interface Message {
   content: string;
   sender: string;
   timestamp: number;
-  type?: 'm.text' | 'm.image' | 'm.file';
+  type?: string;
   status?: 'sending' | 'sent' | 'error';
+  media?: { url: string | null | undefined; type: 'image' | 'file' }[];
 }
 
 export interface User {

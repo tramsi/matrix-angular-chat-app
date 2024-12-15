@@ -22,9 +22,7 @@ export class RoomsComponent implements OnInit, OnDestroy {
     this.rooms$ = this.matrixService.rooms$;
   }
 
-  ngOnInit(): void {
-    this.matrixService.loadRooms();
-  }
+  ngOnInit(): void {}
 
   onJoinRoom(roomId: string): void {
     this.joinRoomSub = this.matrixService.joinRoom(roomId).subscribe();
@@ -36,8 +34,5 @@ export class RoomsComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.joinRoomSub?.unsubscribe();
-  }
-  loadRooms(): void {
-    this.matrixService.loadRooms();
   }
 }

@@ -1,5 +1,6 @@
 import {
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   Component,
   OnDestroy,
   OnInit,
@@ -12,7 +13,7 @@ import { Message, Room } from '../core/models';
   selector: 'app-chat',
   templateUrl: './chat.component.html',
   styleUrls: ['./chat.component.scss'],
-  // changeDetection: ChangeDetectionStrategy.OnPush,
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ChatComponent implements OnInit, OnDestroy {
   selectedRoom$: Observable<Room | null>;
@@ -20,8 +21,12 @@ export class ChatComponent implements OnInit, OnDestroy {
   newMessage: string = '';
   private sendMessageSub: Subscription | null = null;
   private leaveRoomSub: Subscription | null = null;
+  imagePreview: string = '';
 
-  constructor(private matrixService: MatrixService) {
+  constructor(
+    private matrixService: MatrixService,
+    private cdr: ChangeDetectorRef
+  ) {
     this.selectedRoom$ = this.matrixService.selectedRoom$;
     this.messages$ = this.matrixService.messages$;
   }
@@ -37,12 +42,14 @@ export class ChatComponent implements OnInit, OnDestroy {
   }
 
   onSendMessage(): void {
-    if (this.newMessage.trim() === '') return;
+    if (this.newMessage.trim() === '' && !this.imagePreview) return;
 
     this.sendMessageSub = this.matrixService
-      .sendMessage(this.newMessage)
+      .sendMessage(this.newMessage, this.imagePreview)
       .subscribe(() => {
         this.newMessage = ''; // Clear the input field after sending
+        this.imagePreview = ''; // Clear the image preview
+        this.cdr.markForCheck();
       });
   }
 
@@ -52,6 +59,22 @@ export class ChatComponent implements OnInit, OnDestroy {
 
   trackByMessageId(index: number, message: Message): number {
     return message.timestamp; // Use timestamp as a unique identifier
+  }
+
+  onFileSelected(event: Event): void {
+    const fileInput = event.target as HTMLInputElement;
+    if (fileInput.files && fileInput.files[0]) {
+      const file = fileInput.files[0];
+      this.matrixService.uploadImage(file).subscribe({
+        next: (imageUrl) => {
+          this.imagePreview = imageUrl;
+          this.cdr.markForCheck();
+        },
+        error: (error) => {
+          console.error('Error uploading image:', error);
+        },
+      });
+    }
   }
 
   ngOnDestroy(): void {
