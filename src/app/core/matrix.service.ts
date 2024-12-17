@@ -26,6 +26,7 @@ import {
   EventType,
   MsgType,
   ClientEvent,
+  Filter,
 } from 'matrix-js-sdk';
 import { Room, Message } from './models';
 import { MATRIX_CONFIG } from './matrix.config';
@@ -93,8 +94,15 @@ export class MatrixService {
       }
     });
 
+    const filter = new Filter(MATRIX_CONFIG.userId);
+    filter.setDefinition({
+      presence: {
+        not_types: ['m.presence'],
+      },
+    });
+
     // Start the client
-    return from(this.client.startClient({ initialSyncLimit: 20 })).pipe(
+    return from(this.client.startClient({ filter })).pipe(
       catchError((error) => {
         console.error('Error starting Matrix client:', error);
         return throwError(() => 'Failed to start Matrix client');
