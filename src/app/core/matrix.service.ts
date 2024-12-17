@@ -101,6 +101,13 @@ export class MatrixService {
       })
     );
   }
+  getAccessToken(): string | null | undefined {
+    if (!this.client) {
+      console.error('Matrix client is not initialized.');
+      return null;
+    }
+    return this.client?.getAccessToken();
+  }
 
   // Load rooms the user is a member of
   public loadRooms(): void {
@@ -166,7 +173,7 @@ export class MatrixService {
         media: event.getContent()['url']
           ? [
               {
-                url: event.getContent()['url'],
+                url: this.mxcToHttp(event.getContent()['url']),
                 type: 'image',
               },
             ]
@@ -187,7 +194,7 @@ export class MatrixService {
       ? {
           msgtype: MsgType.Image,
           body: content || 'Image',
-          url: imageUrl,
+          url: this.mxcToHttp(imageUrl) as string,
           info: {
             mimetype: 'image/jpeg',
           },
@@ -248,7 +255,7 @@ export class MatrixService {
         })
         .then((response) => {
           console.log('Image uploaded:', response);
-          const imageUrl = response.content_uri;
+          const imageUrl = this.mxcToHttp(response.content_uri);
           observer.next(imageUrl || '');
           observer.complete();
         })
@@ -288,7 +295,6 @@ export class MatrixService {
         height,
         resizeMethod,
         false,
-        true,
         true
       );
     } else {
@@ -298,46 +304,45 @@ export class MatrixService {
         undefined,
         undefined,
         false,
-        true,
         true
       );
     }
   }
 
-  getMediaContent(mxcUrl: string): Observable<SafeResourceUrl> {
-    if (!this.client) {
-      console.error('Matrix client is not initialized.');
-      return throwError(() => new Error('Matrix client not initialized'));
-    }
+  // getMediaContent(mxcUrl: string): Observable<SafeResourceUrl> {
+  //   if (!this.client) {
+  //     console.error('Matrix client is not initialized.');
+  //     return throwError(() => new Error('Matrix client not initialized'));
+  //   }
 
-    const thumbnailUrl = this.mxcToHttp(mxcUrl);
+  //   const thumbnailUrl = this.mxcToHttp(mxcUrl);
 
-    const headers = new HttpHeaders({
-      Authorization: `Bearer ${this.client.getAccessToken()}`,
-    });
+  //   const headers = new HttpHeaders({
+  //     Authorization: `Bearer ${this.client.getAccessToken()}`,
+  //   });
 
-    return this.http
-      .get(thumbnailUrl as string, {
-        headers,
-        responseType: 'blob', // Directly get the response as a blob
-      })
-      .pipe(
-        switchMap((blob) => {
-          const reader = new FileReader();
-          reader.readAsDataURL(blob); // convert blob to base64
+  //   return this.http
+  //     .get(thumbnailUrl as string, {
+  //       headers,
+  //       responseType: 'blob', // Directly get the response as a blob
+  //     })
+  //     .pipe(
+  //       switchMap((blob) => {
+  //         const reader = new FileReader();
+  //         reader.readAsDataURL(blob); // convert blob to base64
 
-          // Return an observable that emits the result when the FileReader has finished
-          return fromEvent(reader, 'loadend').pipe(
-            map(() => {
-              const base64Data = reader.result as string;
-              return this.sanitizer.bypassSecurityTrustResourceUrl(base64Data);
-            })
-          );
-        }),
-        catchError((error) => {
-          console.error('Error fetching media content:', error);
-          return throwError(() => error); // Re-throw the error after logging
-        })
-      );
-  }
+  //         // Return an observable that emits the result when the FileReader has finished
+  //         return fromEvent(reader, 'loadend').pipe(
+  //           map(() => {
+  //             const base64Data = reader.result as string;
+  //             return this.sanitizer.bypassSecurityTrustResourceUrl(base64Data);
+  //           })
+  //         );
+  //       }),
+  //       catchError((error) => {
+  //         console.error('Error fetching media content:', error);
+  //         return throwError(() => error); // Re-throw the error after logging
+  //       })
+  //     );
+  // }
 }

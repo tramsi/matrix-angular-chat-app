@@ -33,6 +33,7 @@ export class ChatComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.matrixService.initClient().subscribe({
       next: () => {
+        this.handleServiceWorker();
         console.log('Matrix client initialized successfully.');
       },
       error: (error) => {
@@ -41,6 +42,54 @@ export class ChatComponent implements OnInit, OnDestroy {
     });
   }
 
+  handleServiceWorker(): void {
+    // Check if service workers are supported
+    if ('serviceWorker' in navigator) {
+      // Register the service worker
+      navigator.serviceWorker
+        .register('/service-worker.js') // Path to your service worker file
+        .then((registration) => {
+          console.log(
+            '[Client] Service Worker registered with scope:',
+            registration.scope
+          );
+
+          // Listen for messages from the service worker
+          navigator.serviceWorker.addEventListener('message', (event) => {
+            const { data } = event;
+
+            // Check if it's an auth request from the service worker
+            if (data.type === 'authRequest') {
+              console.log(
+                `[Client] Received auth request from service worker, requestId: ${data.requestId}`
+              );
+              const accessToken = this.matrixService.getAccessToken();
+
+              // Respond to the service worker with the auth data
+              // event.source is the service worker that sent the message
+              if (event.source) {
+                if (accessToken) {
+                  event.source.postMessage({
+                    type: 'authResponse',
+                    requestId: data.requestId,
+                    accessToken: accessToken,
+                  });
+                } else {
+                  event.source.postMessage({
+                    type: 'authResponse',
+                    requestId: data.requestId,
+                    error: 'No access token available',
+                  });
+                }
+              }
+            }
+          });
+        })
+        .catch((error) => {
+          console.error('[Client] Service Worker registration failed:', error);
+        });
+    }
+  }
   onSendMessage(): void {
     if (this.newMessage.trim() === '' && !this.imagePreview) return;
 

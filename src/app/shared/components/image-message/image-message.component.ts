@@ -27,16 +27,16 @@ export class ImageMessageComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    if (this.mxcUrl) {
-      this.matrixService.getMediaContent(this.mxcUrl).subscribe({
-        next: (url) => {
-          this.imageUrl = url;
-          this.cdr.markForCheck();
-        },
-        error: (error) => {
-          console.log(error);
-        },
-      });
-    }
+    //   if (this.mxcUrl) {
+    //     this.matrixService.getMediaContent(this.mxcUrl).subscribe({
+    //       next: (url) => {
+    //         this.imageUrl = url;
+    //         this.cdr.markForCheck();
+    //       },
+    //       error: (error) => {
+    //         console.log(error);
+    //       },
+    //     });
+    //   }
   }
 }

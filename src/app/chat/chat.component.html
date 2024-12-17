@@ -12,10 +12,11 @@
     <input type="text" [(ngModel)]="newMessage" placeholder="Enter message" />
     <div class="image-upload">
       <input type="file" accept="image/*" (change)="onFileSelected($event)" />
-      <app-image-message
+      <img [src]="imagePreview" alt="Image Preview" />
+      <!-- <app-image-message
         *ngIf="imagePreview"
         [mxcUrl]="imagePreview"
-      ></app-image-message>
+      ></app-image-message> -->
     </div>
     <button (click)="onSendMessage()">Send</button>
     <button (click)="onLeaveRoom()">Leave Room</button>
