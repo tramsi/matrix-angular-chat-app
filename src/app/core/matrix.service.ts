@@ -303,6 +303,7 @@ export class MatrixService {
         height,
         resizeMethod,
         false,
+        true,
         true
       );
     } else {
@@ -312,6 +313,7 @@ export class MatrixService {
         undefined,
         undefined,
         false,
+        true,
         true
       );
     }

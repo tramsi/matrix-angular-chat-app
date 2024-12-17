@@ -6,6 +6,8 @@ const pendingAuthRequests = new Map(); // Map to track pending auth requests
 
 // Constants for media paths
 const MEDIA_DOWNLOAD_PREFIX = "/_matrix/media/v3/download";
+const MEDIA_THUMBNAIL_PREFIX = "/_matrix/media/v3/thumbnail";
+const MEDIA_AUTHED_PREFIX = "/_matrix/client/v1/media";
 
 // Install event
 self.addEventListener("install", (event) => {
@@ -24,7 +26,12 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
   // Check if the URL is a Matrix media request
-  if (!url.pathname.startsWith(MEDIA_DOWNLOAD_PREFIX)) return;
+  if (
+    !url.pathname.startsWith(MEDIA_DOWNLOAD_PREFIX) &&
+    !url.pathname.startsWith(MEDIA_THUMBNAIL_PREFIX) &&
+    !url.pathname.startsWith(MEDIA_AUTHED_PREFIX)
+  )
+    return;
 
   event.respondWith(handleMediaRequest(event, url));
 });
@@ -41,15 +48,15 @@ async function handleMediaRequest(event, url) {
     const auth = await getAuthData(client);
 
     // Update server support map (if needed)
-    await updateServerSupportMap(url.origin, auth.accessToken);
+    // await updateServerSupportMap(url.origin, auth.accessToken);
 
     // Rewrite to authenticated media URL (if supported)
-    if (serverSupportMap[url.origin]?.supportsAuthedMedia) {
-      url.pathname = url.pathname.replace(
-        /\/media\/v3\/(.*)\//,
-        "/client/v1/media/$1/"
-      );
-    }
+    // if (serverSupportMap[url.origin]?.supportsAuthedMedia) {
+    //   url.pathname = url.pathname.replace(
+    //     /\/media\/v3\/(.*)\//,
+    //     "/client/v1/media/$1/"
+    //   );
+    // }
 
     // Add Authorization header and fetch
     const fetchConfig = fetchConfigForToken(auth?.accessToken);
